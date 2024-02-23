@@ -1,0 +1,71 @@
+<!-- <!DOCTYPE html> -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .leaflet-popup-content-wrapper {
+            background-color: #fff; /* Background color */
+            color: #333; /* Text color */
+            font-size: 14px; /* Font size */
+            padding: 10px; /* Padding */
+            border: 2px solid #ccc; /* Border */
+            border-radius: 5px; /* Border radius */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Box shadow */
+        }
+    </style>
+    
+</head>
+<body>
+    {% extends 'base.html'%}
+
+    {% block content %}
+    <div id="map" style="height: 1000px; width: 1000px;"></div>
+    {{ facilities|json_script:"facilities_json" }}
+
+    <script>
+        var map = L.map('map').setView([-1.2921,36.8291], 13);    
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map)  
+        let facilities = JSON.parse(document.getElementById('facilities_json').textContent)
+        facilities.forEach(facility => {
+            L.marker([facility.latitude,facility.longitude]).addTo(map)
+        });
+        map.on('click', (event) => {
+            let lat = event.latlng.lat;
+            let longitude = event.latlng.lng;
+            let facility_name = event.latlng.facility_name
+            L.marker([lat, longitude]).addTo(map);
+
+            fetch(`/get-nearest-facility?latitude=${lat}&longitude=${longitude}&facility_name=${facility_name}`)
+                .then(response => response.json())
+                .then(result => {
+                    console.log(result);
+
+                    // Retrieve facility coordinates,name from the result
+                    let facility_name = result.facility_name;
+                    let facility_coordinates = result.coordinates;
+                    let user_coordinates = [lat, longitude];
+                    
+                    // Add a polyline from user location to facility location
+                    let polyline = L.polyline([user_coordinates, facility_coordinates]).addTo(map);
+                    // popup showing nearest facilty name and distance
+                    var popup = L.popup()
+                        .setLatLng([lat, longitude])
+                        .setContent(`<p>Nearest facility is ${result.facility_name} (${Math.round(result.distance)} km away)</p>`)
+                        .openOn(map);
+
+                                    
+        });
+});
+
+        
+    </script>
+    {% endblock %}
+
+
+</body>
+</html> 
