@@ -13,7 +13,6 @@ from django.contrib.auth import authenticate,login,logout
 # defining the home page
 def index(request):
     facilities = list(Facilities_Nairobi.objects.values('facility_name','latitude','longitude')[:70])
-    # contex = {'facilities':facilities}
     schools = list(Schools_Nairobi.objects.values('school_name','latitude','longitude'))
     contex = {'facilities':facilities,'schools':schools}
     return render(request,'index.html', contex)
@@ -22,7 +21,7 @@ def signup(request):
         username = request.POST.get("username")
         email = request.POST.get("email")
         password = request.POST.get("password")
-        confirm_password = request.POST.get("confirm_password")
+        confirm_password = request.POST.get("confirm_password") 
 
         # Check if passwords match
         if password != confirm_password:
@@ -61,6 +60,10 @@ def login_user(request):
             messages.error(request, "Invalid username or password.")
             return redirect('login')
     return render(request, 'login.html')
+def logout_user(request):
+    logout(request)
+    messages.success(request," You have logged out...")
+    return redirect('index')
 
 def get_features(request):
     if request.method == 'GET':

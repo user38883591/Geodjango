@@ -1,146 +1,78 @@
-<!-- <!DOCTYPE html> -->
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <style>
-        .popup{
-            background-color: #fff; /* Background color */
-            color: #333; /* Text color */
-            font-size: 14px; /* Font size */
-            padding: 10px; /* Padding */
-            border: 2px solid #ccc; /* Border */
-            border-radius: 5px; /* Border radius */
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Box shadow */
-        }
-    </style>
-    
 </head>
 <body>
-    
-{% extends 'base.html'%}
 
-{% block content %}
+    {% extends 'base.html'%}
+
+    {% block content %}
     <div id="feature-list-container">
         <h3> List of amenities around you</h3>
         <ul id="feature-list"></ul>
     </div>
-    <div id="map" style="height: 1200px; width: 1200px;"></div>
     
-    {{ facilities|json_script:"facilities_json" }}
-    {{ schools|json_script:"schools_json" }}
-    {% if user.is_authenticated %}
-    <script>
-        var map = L.map('map').setView([-1.2921,36.8291], 13);    
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        }).addTo(map) 
-     
-        let facilities = JSON.parse(document.getElementById('facilities_json').textContent)
-        facilities.forEach(facility => {
-            L.marker([facility.latitude,facility.longitude]).addTo(map)
+        <div id="map" style="height: 1200px; width: 1200px;"></div>
         
-        });
-        let schools = JSON.parse(document.getElementById('schools_json').textContent)
-        schools.forEach(school => {
-            L.marker([school.latitude,school.longitude]).addTo(map)
-
-        });
-        map.on('click', function(event) {
-            var lat = event.latlng.lat;
-            var lng = event.latlng.lng;
-
-            var circle;
-            var circlePopup;
-
-            // Clear existing layers
-            if (circle) {
-                map.removeLayer(circle);
-            }
-            if (circlePopup) {
-                map.removeLayer(circlePopup);
-            }
-
-            // Calculate the appropriate radius for the circle based on the map's zoom level
-            var radiusInMeters = 10000 / Math.pow(2, map.getZoom());
-
-            // Draw circle with scaled radius
-            circle = L.circle([lat, lng], {
-                color: 'blue',
-                fillColor: '#cceeff',
-                fillOpacity: 0.5,
-                radius: radiusInMeters  // Set the radius to the calculated value
+        {{ facilities|json_script:"facilities_json" }}
+        {{ schools|json_script:"schools_json" }}
+        {% if user.is_authenticated %}
+        
+        <script>
+            var map = L.map('map').setView([-1.2921,36.8291], 13);    
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             }).addTo(map);
+            
+            map.on('click', function(event) {
+                var lat = event.latlng.lat;
+                var lng = event.latlng.lng;
 
-            // Show circle popup
-            circlePopup = L.popup()
-                .setLatLng([lat, lng])
-                .setContent('<p>10 km radius</p>')
-                .openOn(map);
+                // Clear existing markers
+                map.eachLayer(function(layer) {
+                    if (layer instanceof L.Marker) {
+                        map.removeLayer(layer);
+                    }
+                });
 
-            // Fetch features within the circle
-            fetch(`/get-features/?latitude=${lat}&longitude=${lng}`)
-                .then(response => response.json())
-                .then(data => {
-                    // Clear existing text list
-                    var featureListContainer = document.getElementById('feature-list');
-                    featureListContainer.innerHTML = '';
+                // Add marker for the clicked location
+                L.marker([lat, lng]).addTo(map);
 
-                    // Create text list items for each feature
-                    data.forEach(feature => {
-                        var listItem = document.createElement('li');
-                        listItem.textContent = feature.name;
-                        featureListContainer.appendChild(listItem);
+                // Fetch features within the circle
+                fetch(`/get-features/?latitude=${lat}&longitude=${lng}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Clear existing list
+                        var featureListContainer = document.getElementById('feature-list');
+                        featureListContainer.innerHTML = '';
+
+                        // Populate the list with nearby amenities and add markers on the map
+                        data.forEach(feature => {
+                            var listItem = document.createElement('li');
+                            listItem.textContent = feature.name;
+                            featureListContainer.appendChild(listItem);
+
+                            // Add marker for each facility
+                            L.marker([feature.latitude, feature.longitude]).addTo(map);
+                        });
+                    });
             });
-        });
-});
-
-
-        
-//         map.on('click', (event) => {
-//             let lat = event.latlng.lat;
-//             let longitude = event.latlng.lng;
-//             let facility_name = event.latlng.facility_name
-//             L.marker([lat, longitude]).addTo(map);
-
-//             fetch(`/get-nearest-facility?latitude=${lat}&longitude=${longitude}&facility_name=${facility_name}`)
-//                 .then(response => response.json())
-//                 .then(result => {
-//                     console.log(result);
-
-//                     // Retrieve facility coordinates,name from the result
-//                     let facility_name = result.facility_name;
-//                     let facility_coordinates = result.coordinates;
-//                     let user_coordinates = [lat, longitude];
-                    
-//                     // Add a polyline from user location to facility location
-//                     let polyline = L.polyline([user_coordinates, facility_coordinates]).addTo(map);
-//                     // popup showing nearest facilty name and distance
-//                     var popup = L.popup()
-//                         .setLatLng([lat, longitude])
-//                         .setContent(`<p>Nearest facility is ${result.facility_name} (${Math.round(result.distance)} km away)</p>`)
-//                         .openOn(map);
-
-                                    
-//         });
-// });
-
-        
-    </script>
-    {% else %}
-    <script>
-        var map = L.map('map').setView([-1.2921,36.8291], 13);    
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        }).addTo(map)
-    </script>
-    {% endif %}
+        </script>
+        {% else %}
+        <script>
+            var map = L.map('map').setView([-1.2921,36.8291], 13);    
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+        </script>
+        {% endif %}
 
 {% endblock %}
 
-
 </body>
-</html> 
+</html>
